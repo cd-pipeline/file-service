@@ -22,14 +22,16 @@ import org.springframework.boot.context.embedded.EmbeddedServletContainerCustomi
 import org.springframework.boot.context.embedded.tomcat.TomcatEmbeddedServletContainerFactory;
 import org.springframework.context.annotation.Bean;
 
-import java.io.File;
 import java.io.IOException;
 
 @SpringBootApplication
 public class BoosterApplication {
 
+    @Deprecated
+    public static void doTheThing() {}
+
     public static void main(String[] args) throws IOException {
-        File.createTempFile("data", "tmp");
+        doTheThing();
         SpringApplication.run(BoosterApplication.class, args);
     }
 
