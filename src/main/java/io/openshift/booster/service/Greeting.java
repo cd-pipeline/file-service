@@ -35,6 +35,7 @@ public class Greeting implements Comparable<Greeting> {
         if (obj != null) {
             return Integer.MIN_VALUE;
         }
+
         return Integer.MIN_VALUE;
     }
 }
