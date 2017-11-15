@@ -1,15 +1,7 @@
-pipeline {
-    agent {
-        docker {
-            image 'maven:3-alpine' 
-            args '-v /root/.m2:/root/.m2' 
-        }
-    }
-    stages {
-        stage('Build') { 
-            steps {
-                sh 'mvn -B -DskipTests clean package' 
-            }
+podTemplate(label: 'mypod') {
+    node('mypod') {
+        stage('Run shell') {
+            sh 'echo hello world'
         }
     }
 }
