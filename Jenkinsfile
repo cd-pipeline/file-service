@@ -9,7 +9,7 @@ podTemplate(label: 'mypod', containers: [
         stage('do some helm work') {
             container('helm') {
                sh "helm init --client-only" 
-               sh "helm install --name sonarqube stable/sonarqube --namespace cd-pipeline"
+               sh "helm install --name nexus stable/sonatype-nexus --namespace cd-pipeline"
             }
         }
     }
