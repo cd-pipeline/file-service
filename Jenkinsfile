@@ -8,7 +8,7 @@ podTemplate(label: 'mypod', containers: [
     node('mypod') {
         stage('do some helm work') {
             container('helm') {
-               sh "helm install --name nexus sonatype-nexus --namespace cd-pipeline"
+               sh "helm install nexus"
             }
         }
     }
