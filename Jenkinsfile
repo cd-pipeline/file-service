@@ -23,7 +23,7 @@ podTemplate(label: 'mypod', containers: [
 }
 
 def waitForAllPodsRunning(String namespace) {
-    timeout(KUBERNETES_RESOURCE_INIT_TIMEOUT) {
+    timeout(60000) {
         while (true) {
             podsStatus = sh(returnStdout: true, script: "kubectl --namespace='${namespace}' get pods --no-headers").trim()
             def notRunning = podsStatus.readLines().findAll { line -> !line.contains('Running') }
