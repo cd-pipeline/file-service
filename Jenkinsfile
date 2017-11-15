@@ -16,6 +16,9 @@ podTemplate(label: 'mypod', containers: [
             container('helm') {
                sh "helm delete --purge nexus" 
                sh "helm install --name nexus stable/sonatype-nexus --namespace cd-pipeline"
+            }
+            
+            container('kubectl') {
                waitForAllPodsRunning('cd-pipeline') 
             }
         }
