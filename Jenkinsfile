@@ -8,7 +8,8 @@ podTemplate(label: 'mypod', containers: [
     node('mypod') {
         stage('do some helm work') {
             container('helm') {
-               sh "helm install nexus"
+               sh "helm init --client-only" 
+               sh "helm install sonatype-nexus"
             }
         }
     }
