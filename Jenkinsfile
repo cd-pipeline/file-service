@@ -1,57 +1,48 @@
-#!/usr/bin/groovy
-@Library('github.com/akalinovski/fabric8-pipeline-library@master')
-def canaryVersion = "1.0.${env.BUILD_NUMBER}"
-def utils = new io.fabric8.Utils()
-def stashName = "buildpod.${env.JOB_NAME}.${env.BUILD_NUMBER}".replace('-', '_').replace('/', '_')
-def envStage = utils.environmentNamespace('stage')
-def envProd = utils.environmentNamespace('run')
+podTemplate(label: 'mypod', containers: [
+    containerTemplate(name: 'docker', image: 'docker', ttyEnabled: true, command: 'cat'),
+    containerTemplate(name: 'kubectl', image: 'lachlanevenson/k8s-kubectl:v1.8.0', command: 'cat', ttyEnabled: true),
+    containerTemplate(name: 'helm', image: 'lachlanevenson/k8s-helm:latest', command: 'cat', ttyEnabled: true)
+  ],
+  volumes: [
+    hostPathVolume(mountPath: '/var/run/docker.sock', hostPath: '/var/run/docker.sock'),
+  ]) {
+    node('mypod') {
 
-mavenNode {
-  checkout scm
-  if (utils.isCI()){
+        stage('do some Docker work') {
+            container('docker') {
 
-    mavenCI{}
-    
-  } else if (utils.isCD()){
-    echo 'NOTE: running pipelines for the first time will take longer as build and base docker images are pulled onto the node'
-    container(name: 'maven') {
-
-      stage('Build Release'){
-        mavenCanaryRelease {
-          version = canaryVersion
+                withCredentials([[$class: 'UsernamePasswordMultiBinding', 
+                        credentialsId: 'dockerhub',
+                        usernameVariable: 'DOCKER_HUB_USER', 
+                        passwordVariable: 'DOCKER_HUB_PASSWORD']]) {
+                    
+                    sh """
+                        docker pull ubuntu
+                        docker tag ubuntu ${env.DOCKER_HUB_USER}/ubuntu:${env.BUILD_NUMBER}
+                        """
+                    sh "docker login -u ${env.DOCKER_HUB_USER} -p ${env.DOCKER_HUB_PASSWORD} "
+                    sh "docker push ${env.DOCKER_HUB_USER}/ubuntu:${env.BUILD_NUMBER} "
+                }
+            }
         }
-        //stash deployment manifests
-        stash includes: '**/*.yml', name: stashName
-      }
 
-      stage('Rollout to Stage'){
-        apply{
-          environment = envStage
+        stage('do some kubectl work') {
+            container('kubectl') {
+
+                withCredentials([[$class: 'UsernamePasswordMultiBinding', 
+                        credentialsId: 'dockerhub',
+                        usernameVariable: 'DOCKER_HUB_USER',
+                        passwordVariable: 'DOCKER_HUB_PASSWORD']]) {
+                    
+                    sh "kubectl get nodes"
+                }
+            }
         }
-      }
+        stage('do some helm work') {
+            container('helm') {
+
+               sh "helm ls"
+            }
+        }
     }
-  }
-}
-
-if (utils.isCD()){
-  node {
-    stage('Approve'){
-       approve {
-         room = null
-         version = canaryVersion
-         environment = 'Stage'
-       }
-     }
-  }
-
-  clientsNode{
-    container(name: 'clients') {
-      stage('Rollout to Run'){
-        unstash stashName
-        apply{
-          environment = envProd
-        }
-      }
-    }
-  }
 }
