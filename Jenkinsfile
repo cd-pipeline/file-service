@@ -9,7 +9,7 @@ podTemplate(label: 'mypod', containers: [
         stage('do some helm work') {
             container('helm') {
                sh "helm init --client-only" 
-               sh "helm install sonatype-nexus"
+               sh "helm install --name jenkins stable/jenkins --namespace cd-pipeline"
             }
         }
     }
