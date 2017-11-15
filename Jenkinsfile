@@ -6,11 +6,33 @@ podTemplate(label: 'mypod', containers: [
     hostPathVolume(mountPath: '/var/run/docker.sock', hostPath: '/var/run/docker.sock'),
   ]) {
     node('mypod') {
-        stage('do some helm work') {
+        stage('Helm Init') {
             container('helm') {
                sh "helm init --client-only" 
-               sh "helm install --name nexus stable/sonatype-nexus --namespace cd-pipeline"
             }
+        }
+        
+        stage('Install Nexus') {
+            container('helm') {
+               sh "helm delete --purge nexus" 
+               sh "helm install --name nexus stable/sonatype-nexus --namespace cd-pipeline"
+               waitForAllPodsRunning('cd-pipeline') 
+            }
+        }
+    }
+}
+
+def waitForAllPodsRunning(String namespace) {
+    timeout(KUBERNETES_RESOURCE_INIT_TIMEOUT) {
+        while (true) {
+            podsStatus = sh(returnStdout: true, script: "kubectl --namespace='${namespace}' get pods --no-headers").trim()
+            def notRunning = podsStatus.readLines().findAll { line -> !line.contains('Running') }
+            if (notRunning.isEmpty()) {
+                echo 'All pods are running'
+                break
+            }
+            sh "kubectl --namespace='${namespace}' get pods"
+            sleep 10
         }
     }
 }
