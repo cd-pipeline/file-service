@@ -21,7 +21,7 @@ podTemplate(label: 'mypod', containers: [
             }
             
             container('kubectl') {
-               sh "kubectl --namespace=сd-pipeline get pods"
+               sh "kubectl -n сd-pipeline get pods"
             }
         }
     }
