@@ -28,6 +28,28 @@ podTemplate(label: 'mypod', containers: [
                waitForAllPodsRunning('cd-pipeline')
                waitForAllServicesRunning('cd-pipeline')
             }
+            
+            container('helm') {
+               sh "helm delete --purge sonarqube || true" 
+               sh "ls -la" 
+               sh "helm install --name sonarqube -f ./templates/sonarqube.yml stable/sonarqube --namespace cd-pipeline"
+            }
+        }
+        
+        stage('Install SonarQube') {
+            git url: 'https://github.com/akalinovski/file-service.git'
+            
+            container('helm') {
+               sh "helm delete --purge sonarqube || true" 
+               sh "ls -la" 
+               sh "helm install --name sonarqube -f ./templates/sonarqube.yml stable/sonarqube --namespace cd-pipeline"
+            }
+            
+            container('kubectl') {
+               sh "kubectl get pods -n cd-pipeline"
+               waitForAllPodsRunning('cd-pipeline')
+               waitForAllServicesRunning('cd-pipeline')
+            }
         }
     }
 }
