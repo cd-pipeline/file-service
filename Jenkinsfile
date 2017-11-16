@@ -16,7 +16,7 @@ podTemplate(label: 'mypod', containers: [
         
         stage('Install Nexus') {
             container('helm') {
-               sh "helm delete --purge nexus" 
+               sh "helm delete --purge nexus || true" 
                sh "helm install --name nexus -f ${srcDirectory}/templates/nexus.yml stable/sonatype-nexus --namespace cd-pipeline"
             }
             
