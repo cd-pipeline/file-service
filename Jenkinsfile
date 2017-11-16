@@ -20,7 +20,7 @@ podTemplate(label: 'mypod', containers: [
             container('helm') {
                sh "helm delete --purge nexus || true" 
                sh "ls -la" 
-               sh "helm install --name nexus -f ./file-service/templates/nexus.yml stable/sonatype-nexus --namespace cd-pipeline"
+               sh "helm install --name nexus -f ./templates/nexus.yml stable/sonatype-nexus --namespace cd-pipeline"
             }
             
             container('kubectl') {
