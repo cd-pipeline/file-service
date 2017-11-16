@@ -19,6 +19,7 @@ podTemplate(label: 'mypod', containers: [
             
             container('helm') {
                sh "helm delete --purge nexus || true" 
+               sh "ls -la" 
                sh "helm install --name nexus -f ${workspaceDir}/templates/nexus.yml stable/sonatype-nexus --namespace cd-pipeline"
             }
             
