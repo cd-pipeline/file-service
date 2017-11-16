@@ -21,7 +21,7 @@ podTemplate(label: 'mypod', containers: [
             }
             
             container('kubectl') {
-               waitForAllPodsRunning('cd-pipeline') 
+               sh "kubectl --namespace=сd-pipeline get pods"
             }
         }
     }
