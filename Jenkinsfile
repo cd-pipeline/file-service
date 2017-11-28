@@ -1,85 +1,57 @@
-#!/usr/bin/env groovy
+#!/usr/bin/groovy
+@Library('github.com/fabric8io/fabric8-pipeline-library@master')
+def canaryVersion = "1.0.${env.BUILD_NUMBER}"
+def utils = new io.fabric8.Utils()
+def stashName = "buildpod.${env.JOB_NAME}.${env.BUILD_NUMBER}".replace('-', '_').replace('/', '_')
+def envStage = utils.environmentNamespace('stage')
+def envProd = utils.environmentNamespace('run')
 
-podTemplate(label: 'mypod', containers: [
-    containerTemplate(name: 'kubectl', image: 'lachlanevenson/k8s-kubectl:v1.8.0', command: 'cat', ttyEnabled: true),
-    containerTemplate(name: 'helm', image: 'lachlanevenson/k8s-helm:latest', command: 'cat', ttyEnabled: true)
-  ],
-  volumes: [
-    hostPathVolume(mountPath: '/var/run/docker.sock', hostPath: '/var/run/docker.sock'),
-  ]) {
-    node('mypod') {
-        stage('Helm Init') {
-            container('helm') {
-               sh "helm init --client-only" 
-            }
+mavenNode {
+  checkout scm
+  if (utils.isCI()){
+
+    mavenCI{}
+    
+  } else if (utils.isCD()){
+    echo 'NOTE: running pipelines for the first time will take longer as build and base docker images are pulled onto the node'
+    container(name: 'maven') {
+
+      stage('Build Release'){
+        mavenCanaryRelease {
+          version = canaryVersion
         }
-        
-        stage('Install Nexus') {
-            git url: 'https://github.com/akalinovski/file-service.git'
-            
-            container('helm') {
-               sh "helm delete --purge nexus || true" 
-               sh "ls -la" 
-               sh "helm install --name nexus -f ./templates/nexus.yml stable/sonatype-nexus --namespace cd-pipeline"
-            }
-            
-            container('kubectl') {
-               sh "kubectl get pods -n cd-pipeline"
-               waitForAllPodsRunning('cd-pipeline')
-               waitForAllServicesRunning('cd-pipeline')
-            }
-            
-            container('helm') {
-               sh "helm delete --purge sonarqube || true" 
-               sh "ls -la" 
-               sh "helm install --name sonarqube -f ./templates/sonarqube.yml stable/sonarqube --namespace cd-pipeline"
-            }
+        //stash deployment manifests
+        stash includes: '**/*.yml', name: stashName
+      }
+
+      stage('Rollout to Stage'){
+        apply{
+          environment = envStage
         }
-        
-        stage('Install SonarQube') {
-            git url: 'https://github.com/akalinovski/file-service.git'
-            
-            container('helm') {
-               sh "helm delete --purge sonarqube || true" 
-               sh "ls -la" 
-               sh "helm install --name sonarqube -f ./templates/sonarqube.yml stable/sonarqube --namespace cd-pipeline"
-            }
-            
-            container('kubectl') {
-               sh "kubectl get pods -n cd-pipeline"
-               waitForAllPodsRunning('cd-pipeline')
-               waitForAllServicesRunning('cd-pipeline')
-            }
-        }
+      }
     }
+  }
 }
 
-def waitForAllPodsRunning(String namespace) {
-    timeout(60) {
-        while (true) {
-            podsStatus = sh(returnStdout: true, script: "kubectl --namespace='${namespace}' get pods --no-headers").trim()
-            def notRunning = podsStatus.readLines().findAll { line -> !line.contains('Running') }
-            if (notRunning.isEmpty()) {
-                echo 'All pods are running'
-                break
-            }
-            sh "kubectl --namespace='${namespace}' get pods"
-            sleep 10
-        }
-    }
-}
+if (utils.isCD()){
+  node {
+    stage('Approve'){
+       approve {
+         room = null
+         version = canaryVersion
+         environment = 'Stage'
+       }
+     }
+  }
 
-def waitForAllServicesRunning(String namespace) {
-    timeout(60) {
-        while (true) {
-            servicesStatus = sh(returnStdout: true, script: "kubectl --namespace='${namespace}' get services --no-headers").trim()
-            def notRunning = servicesStatus.readLines().findAll { line -> line.contains('pending') }
-            if (notRunning.isEmpty()) {
-                echo 'All pods are running'
-                break
-            }
-            sh "kubectl --namespace='${namespace}' get services"
-            sleep 10
+  clientsNode{
+    container(name: 'clients') {
+      stage('Rollout to Run'){
+        unstash stashName
+        apply{
+          environment = envProd
         }
+      }
     }
+  }
 }

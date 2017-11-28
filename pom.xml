@@ -113,7 +113,7 @@
           <resources>
             <labels>
               <all>
-                <space>pipelines</space>
+                <space>cd-pipeline</space>
               </all>
             </labels>
           </resources>
